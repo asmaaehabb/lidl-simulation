@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulation</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #17212b;
+      --muted: #667085;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --random: #2563eb;
+      --biased: #d97706;
+      --true: #111827;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+                   "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 36px 20px 48px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      letter-spacing: -0.03em;
+    }
+
+    .notice {
+      margin-top: 10px;
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #7f1d1d;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 999px;
+      padding: 7px 11px;
+    }
+
+    .panel {
+      margin-top: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 18px;
+      align-items: end;
+    }
+
+    .control label {
+      display: block;
+      font-size: 14px;
+      font-weight: 650;
+      margin-bottom: 8px;
+    }
+
+    .control-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    input[type="number"] {
+      width: 88px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 9px 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 11px 17px;
+      cursor: pointer;
+      min-height: 42px;
+    }
+
+    button:hover { filter: brightness(0.96); }
+
+    .true-effect {
+      margin-top: 20px;
+      text-align: center;
+      padding: 18px;
+      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .true-effect .label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .true-effect .value {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .result-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .result-card h2 {
+      margin: 0 0 18px;
+      font-size: 18px;
+    }
+
+    .metric + .metric {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metric-value {
+      margin-top: 4px;
+      font-size: 25px;
+      font-weight: 800;
+    }
+
+    .chart-panel {
+      margin-top: 18px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .chart-panel h2 {
+      margin: 0 0 4px;
+      font-size: 18px;
+    }
+
+    .chart-subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 340px;
+      display: block;
+    }
+
+    .legend {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .dot, .line-key {
+      display: inline-block;
+      flex: 0 0 auto;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+
+    .dot.random { background: var(--random); }
+    .dot.biased { background: var(--biased); }
+
+    .line-key {
+      width: 18px;
+      height: 0;
+      border-top: 2px dashed var(--true);
+    }
+
+    @media (max-width: 760px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .results {
+        grid-template-columns: 1fr;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      canvas { height: 300px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <h1>Simulation</h1>
+    <div class="notice">SIMULATED DATA — NOT ACTUAL LIDL HERMANNPLATZ DATA</div>
+
+    <section class="panel">
+      <div class="controls">
+        <div class="control">
+          <label for="effectRange">True effect of extra checkout (minutes)</label>
+          <div class="control-row">
+            <input id="effectRange" type="range" min="-6" max="0" step="0.5" value="-3" />
+            <input id="effectNumber" type="number" min="-6" max="0" step="0.5" value="-3" />
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="periodsRange">Number of busy periods</label>
+          <div class="control-row">
+            <input id="periodsRange" type="range" min="50" max="1000" step="50" value="300" />
+            <input id="periodsNumber" type="number" min="50" max="1000" step="50" value="300" />
+          </div>
+        </div>
+
+        <button id="runBtn">Run Simulation</button>
+      </div>
+
+      <div class="true-effect">
+        <div class="label">True Treatment Effect</div>
+        <div class="value" id="trueEffect">−3.00 min</div>
+      </div>
+
+      <div class="results">
+        <div class="result-card">
+          <h2>Random Assignment</h2>
+          <div class="metric">
+            <div class="metric-label">Average estimated effect</div>
+            <div class="metric-value" id="randomEstimate">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Bias</div>
+            <div class="metric-value" id="randomBias">—</div>
+          </div>
+        </div>
+
+        <div class="result-card">
+          <h2>Biased Assignment</h2>
+          <div class="metric">
+            <div class="metric-label">Average estimated effect</div>
+            <div class="metric-value" id="biasedEstimate">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Bias</div>
+            <div class="metric-value" id="biasedBias">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chart-panel">
+      <h2>Repeated Difference-in-Means Estimates</h2>
+      <div class="chart-subtitle">Each dot is one simulated experiment.</div>
+      <canvas id="chart"></canvas>
+
+      <div class="legend">
+        <div class="legend-item">
+          <span class="dot random"></span>
+          <span>Random assignment</span>
+        </div>
+        <div class="legend-item">
+          <span class="dot biased"></span>
+          <span>Biased assignment</span>
+        </div>
+        <div class="legend-item">
+          <span class="line-key"></span>
+          <span>True effect</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Fixed simulation choices:
+    const REPETITIONS = 500;
+    const BASELINE_MEAN = 10;
+    const BASELINE_SD = 2;
+    const MIN_BASELINE_WAIT = 7;
+
+    // The biased rule is fixed in the background.
+    // Higher Y(0) -> higher probability of receiving treatment.
+    // This logistic rule gives about a 50% average treatment rate.
+    const BIAS_SCALE = 1.25;
+
+    const effectRange = document.getElementById("effectRange");
+    const effectNumber = document.getElementById("effectNumber");
+    const periodsRange = document.getElementById("periodsRange");
+    const periodsNumber = document.getElementById("periodsNumber");
+    const runBtn = document.getElementById("runBtn");
+
+    const trueEffectEl = document.getElementById("trueEffect");
+    const randomEstimateEl = document.getElementById("randomEstimate");
+    const randomBiasEl = document.getElementById("randomBias");
+    const biasedEstimateEl = document.getElementById("biasedEstimate");
+    const biasedBiasEl = document.getElementById("biasedBias");
+    const canvas = document.getElementById("chart");
+
+    let lastRandomEstimates = [];
+    let lastBiasedEstimates = [];
+    let lastTrueEffect = -3;
+
+    function syncInputs(range, number) {
+      range.addEventListener("input", () => {
+        number.value = range.value;
+      });
+
+      number.addEventListener("input", () => {
+        const min = Number(number.min);
+        const max = Number(number.max);
+        let v = Number(number.value);
+        if (!Number.isFinite(v)) return;
+        v = Math.max(min, Math.min(max, v));
+        range.value = v;
+      });
+    }
+
+    syncInputs(effectRange, effectNumber);
+    syncInputs(periodsRange, periodsNumber);
+
+    function normalRandom(mean = 0, sd = 1) {
+      let u = 0;
+      let v = 0;
+
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+
+      const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      return mean + sd * z;
+    }
+
+    function logistic(x) {
+      return 1 / (1 + Math.exp(-x));
+    }
+
+    function mean(values) {
+      return values.reduce((sum, x) => sum + x, 0) / values.length;
+    }
+
+    function differenceInMeans(yObserved, treatment) {
+      let treatedSum = 0;
+      let controlSum = 0;
+      let treatedN = 0;
+      let controlN = 0;
+
+      for (let i = 0; i < yObserved.length; i++) {
+        if (treatment[i] === 1) {
+          treatedSum += yObserved[i];
+          treatedN++;
+        } else {
+          controlSum += yObserved[i];
+          controlN++;
+        }
+      }
+
+      if (treatedN === 0 || controlN === 0) return null;
+
+      return (treatedSum / treatedN) - (controlSum / controlN);
+    }
+
+    function simulateOnce(n, trueEffect) {
+      const y0 = new Array(n);
+      const y1 = new Array(n);
+
+      // 1) Generate Y(0): baseline waiting time under the normal checkout setup.
+      // 2) Create Y(1) = Y(0) + true treatment effect.
+      for (let i = 0; i < n; i++) {
+        y0[i] = Math.max(
+          MIN_BASELINE_WAIT,
+          normalRandom(BASELINE_MEAN, BASELINE_SD)
+        );
+        y1[i] = y0[i] + trueEffect;
+      }
+
+      const randomTreatment = new Array(n);
+      const biasedTreatment = new Array(n);
+      const randomObserved = new Array(n);
+      const biasedObserved = new Array(n);
+
+      for (let i = 0; i < n; i++) {
+        // 3) Random assignment: every period has a 50% chance of treatment.
+        randomTreatment[i] = Math.random() < 0.5 ? 1 : 0;
+
+        // 4) Biased assignment:
+        // periods with higher Y(0) are more likely to receive treatment.
+        const biasedProbability = logistic(
+          (y0[i] - BASELINE_MEAN) / BIAS_SCALE
+        );
+        biasedTreatment[i] = Math.random() < biasedProbability ? 1 : 0;
+
+        // 5) Observe only the potential outcome corresponding to treatment.
+        randomObserved[i] =
+          randomTreatment[i] === 1 ? y1[i] : y0[i];
+
+        biasedObserved[i] =
+          biasedTreatment[i] === 1 ? y1[i] : y0[i];
+      }
+
+      // 6) Difference in means: treated mean minus control mean.
+      return {
+        randomEstimate: differenceInMeans(randomObserved, randomTreatment),
+        biasedEstimate: differenceInMeans(biasedObserved, biasedTreatment)
+      };
+    }
+
+    function runSimulation() {
+      const trueEffect = Number(effectNumber.value);
+      const n = Math.round(Number(periodsNumber.value));
+
+      effectRange.value = trueEffect;
+      periodsRange.value = n;
+
+      const randomEstimates = [];
+      const biasedEstimates = [];
+
+      // 7) Repeat the experiment a fixed 500 times.
+      while (randomEstimates.length < REPETITIONS) {
+        const result = simulateOnce(n, trueEffect);
+
+        if (
+          result.randomEstimate !== null &&
+          result.biasedEstimate !== null
+        ) {
+          randomEstimates.push(result.randomEstimate);
+          biasedEstimates.push(result.biasedEstimate);
+        }
+      }
+
+      // 8) Average estimated effects.
+      const avgRandom = mean(randomEstimates);
+      const avgBiased = mean(biasedEstimates);
+
+      // 9) Bias = average estimate - true effect.
+      const biasRandom = avgRandom - trueEffect;
+      const biasBiased = avgBiased - trueEffect;
+
+      lastRandomEstimates = randomEstimates;
+      lastBiasedEstimates = biasedEstimates;
+      lastTrueEffect = trueEffect;
+
+      trueEffectEl.textContent = formatMinutes(trueEffect);
+      randomEstimateEl.textContent = formatMinutes(avgRandom);
+      biasedEstimateEl.textContent = formatMinutes(avgBiased);
+      randomBiasEl.textContent = formatMinutes(biasRandom);
+      biasedBiasEl.textContent = formatMinutes(biasBiased);
+
+      drawChart(randomEstimates, biasedEstimates, trueEffect);
+    }
+
+    function formatMinutes(value) {
+      const sign = value < 0 ? "−" : value > 0 ? "+" : "";
+      return `${sign}${Math.abs(value).toFixed(2)} min`;
+    }
+
+    function drawChart(randomEstimates, biasedEstimates, trueEffect) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const width = rect.width;
+      const height = rect.height;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const padding = {
+        left: 125,
+        right: 26,
+        top: 30,
+        bottom: 55
+      };
+
+      const plotLeft = padding.left;
+      const plotRight = width - padding.right;
+      const plotTop = padding.top;
+      const plotBottom = height - padding.bottom;
+
+      const allValues = [
+        ...randomEstimates,
+        ...biasedEstimates,
+        trueEffect
+      ];
+
+      let minX = Math.min(...allValues);
+      let maxX = Math.max(...allValues);
+
+      const span = Math.max(1, maxX - minX);
+      minX -= span * 0.12;
+      maxX += span * 0.12;
+
+      const xScale = x =>
+        plotLeft + ((x - minX) / (maxX - minX)) * (plotRight - plotLeft);
+
+      const randomY = plotTop + (plotBottom - plotTop) * 0.32;
+      const biasedY = plotTop + (plotBottom - plotTop) * 0.72;
+
+      // Horizontal guide lines
+      ctx.strokeStyle = "#e5e7eb";
+      ctx.lineWidth = 1;
+
+      [randomY, biasedY].forEach(y => {
+        ctx.beginPath();
+        ctx.moveTo(plotLeft, y);
+        ctx.lineTo(plotRight, y);
+        ctx.stroke();
+      });
+
+      // True effect line
+      const trueX = xScale(trueEffect);
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(trueX, plotTop - 5);
+      ctx.lineTo(trueX, plotBottom + 5);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "#111827";
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("True effect", trueX, 15);
+
+      // Group labels
+      ctx.fillStyle = "#374151";
+      ctx.font = "13px system-ui, sans-serif";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Random assignment", plotLeft - 14, randomY);
+      ctx.fillText("Biased assignment", plotLeft - 14, biasedY);
+
+      // Dots
+      function drawDots(values, centerY, fillStyle) {
+        ctx.fillStyle = fillStyle;
+        ctx.globalAlpha = 0.42;
+
+        values.forEach((value, i) => {
+          // Deterministic-looking vertical jitter based on index,
+          // so points do not all overlap exactly.
+          const jitter = ((i * 17) % 29 - 14) * 0.75;
+          const x = xScale(value);
+          const y = centerY + jitter;
+
+          ctx.beginPath();
+          ctx.arc(x, y, 2.6, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        ctx.globalAlpha = 1;
+      }
+
+      drawDots(randomEstimates, randomY, "#2563eb");
+      drawDots(biasedEstimates, biasedY, "#d97706");
+
+      // X-axis
+      ctx.strokeStyle = "#9ca3af";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(plotLeft, plotBottom);
+      ctx.lineTo(plotRight, plotBottom);
+      ctx.stroke();
+
+      const ticks = 6;
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+
+      for (let i = 0; i <= ticks; i++) {
+        const value = minX + (i / ticks) * (maxX - minX);
+        const x = xScale(value);
+
+        ctx.beginPath();
+        ctx.moveTo(x, plotBottom);
+        ctx.lineTo(x, plotBottom + 5);
+        ctx.stroke();
+
+        ctx.fillText(value.toFixed(1), x, plotBottom + 9);
+      }
+
+      ctx.fillStyle = "#374151";
+      ctx.font = "13px system-ui, sans-serif";
+      ctx.fillText(
+        "Estimated treatment effect (minutes)",
+        (plotLeft + plotRight) / 2,
+        height - 18
+      );
+    }
+
+    runBtn.addEventListener("click", runSimulation);
+
+    window.addEventListener("resize", () => {
+      if (lastRandomEstimates.length) {
+        drawChart(
+          lastRandomEstimates,
+          lastBiasedEstimates,
+          lastTrueEffect
+        );
+      }
+    });
+
+    // Run once automatically on page load.
+    runSimulation();
+  </script>
+</body>
+</html>
